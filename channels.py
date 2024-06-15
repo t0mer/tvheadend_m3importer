@@ -6,9 +6,10 @@ import argparse
 import json
 import collections
 import re
-import urllib
+import urllib.parse
 
 import requests
+from requests.auth import HTTPDigestAuth
 
 Channel = collections.namedtuple('Channel', ['name', 'url', 'extras'])
 
@@ -47,7 +48,6 @@ class ParseVLC(object):
         for line in section:
             m = self.line_regex.match(line)
 
-
             if m:
                 tag, value = m.groups()
                 if tag == 'INF':
@@ -70,18 +70,20 @@ class TvheadendAPI(object):
     def __init__(self, root, user=None, pw=None, interface='eth0'):
         self.root_url = root
         self.interface = interface
-        self.auth = (user, pw) if user else None
+        self.auth = HTTPDigestAuth(user, pw) if user else None
 
     def post(self, sub_url, data):
         url = urllib.parse.urljoin(self.root_url, sub_url)
 
-        res = requests.post(url,  data=data, auth=self.auth)
+        res = requests.post(url, data=data, auth=self.auth)
+        res.raise_for_status()
         return res.json()
 
     def get(self, sub_url, params):
         url = urllib.parse.urljoin(self.root_url, sub_url)
 
-        res = requests.get(url,  params=params, auth=self.auth)
+        res = requests.get(url, params=params, auth=self.auth)
+        res.raise_for_status()
         return res.json()
 
     """
@@ -135,6 +137,7 @@ class TvheadendAPI(object):
 
         for mux in res['entries']:
             yield Channel(mux['name'], mux['iptv_url'], mux)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
